@@ -312,6 +312,15 @@ table.t tr.total td{font-weight:700;background:var(--s50)}
 .picklist tr.pk.sel td{background:var(--i50)}
 .picklist input{width:16px;height:16px;accent-color:var(--i600)}
 .pchips{display:flex;flex-wrap:wrap;gap:6px}
+.tmpick{display:flex;flex-wrap:wrap;gap:8px}
+.tmbtn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:0;border-radius:99px;background:#fff;box-shadow:inset 0 0 0 1px var(--s200);color:var(--s700);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.tmbtn:hover{background:var(--s50)}
+.tmbtn.on{background:var(--i600);color:#fff;box-shadow:none}
+.nmbox{position:relative}
+.nmsug{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:5;max-height:240px;overflow-y:auto;background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(13,23,51,.14),inset 0 0 0 1px var(--s200);padding:4px}
+.nmsug button{display:flex;width:100%;align-items:center;gap:8px;border:0;background:none;border-radius:8px;padding:7px 10px;font-family:inherit;font-size:13px;text-align:left;cursor:pointer;color:var(--n800)}
+.nmsug button:hover,.nmsug button.hi{background:var(--i50)}
+.nmsug small{color:var(--s500);margin-left:auto;white-space:nowrap}
 .pchip{display:inline-flex;align-items:center;gap:6px;border-radius:99px;background:var(--i50);color:var(--i700);padding:3px 4px 3px 10px;font-size:13px;font-weight:500}
 .pchip button{display:grid;place-items:center;width:20px;height:20px;border:0;border-radius:99px;background:none;color:var(--i700);cursor:pointer}
 .pchip button:hover{background:var(--i100)}
@@ -777,36 +786,38 @@ function openGive(src){
       '<div class="field"><label for="fDue">Hạn hoàn thành</label><input class="inp" type="date" id="fDue" value="'+addDays(TODAY,7)+'"></div></div>'+
       '<div class="field"><label for="fKind">Cách theo dõi</label><select class="inp" id="fKind">'+opt('once',KIND.once,'result')+opt('result',KIND.result,'result')+opt('stage',KIND.stage,'result')+'</select><div class="hint" id="fKindHint">'+KHINT.result+'</div></div>'+
       '<div class="field" id="fStagesBox" hidden><span class="lbl">Các giai đoạn (tên và hạn từng giai đoạn)</span><div id="fStages" style="display:flex;flex-direction:column;gap:8px"></div><div><button type="button" class="btn soft sm" data-act="addStage">'+ic('plus',15)+'Thêm giai đoạn</button></div></div>'+
-      '<div class="field"><label for="fFind">Giao cho</label>'+
-        '<div class="toolbar"><select class="inp" id="fBy" aria-label="Giao cho ai">'+opt('p','Giao cho từng người','p')+opt('t','Giao cho cả tổ','p')+'</select><select class="inp" id="fTm" aria-label="Lọc theo tổ"></select><select class="inp" id="fRl" aria-label="Lọc theo chức vụ"></select>'+
-        '<div class="search" style="flex:1 1 180px">'+ic('search',16)+'<input class="inp" id="fFind" placeholder="Tìm theo tên" autocomplete="off"></div></div>'+
-        '<div class="picklist thin" id="fList"></div>'+
-        '<div class="row between"><span class="hint">Tick ô ở dòng tiêu đề để chọn tất cả đang hiện. Cả tổ: chung 1 dòng tiến độ; từng người: mỗi người 1 dòng.</span><button type="button" class="btn ghost xs" data-act="pickNone">Bỏ chọn tất cả</button></div>'+
-        '<div class="row" style="gap:8px"><b style="font-size:13px" id="fCount"></b></div><div class="pchips" id="fWho"></div></div>'+
+      '<div class="field"><span class="lbl">Giao cho tổ</span><div class="tmpick" id="fTeams"></div></div>'+
+      '<div class="field"><label for="fName">Hoặc giao cho người (gõ tên)</label>'+
+        '<div class="nmbox"><div class="row" style="gap:8px;flex-wrap:nowrap"><input class="inp" id="fName" placeholder="Gõ họ tên rồi bấm Enter" autocomplete="off" style="flex:1"><button type="button" class="btn soft" data-act="addName">'+ic('plus',15)+'Thêm</button></div><div class="nmsug thin" id="fSug" hidden></div></div>'+
+        '<div class="hint">Gõ không dấu cũng được, chọn trong gợi ý hoặc gõ tên mới. Cả tổ: chung 1 dòng tiến độ; từng người: mỗi người 1 dòng.</div></div>'+
+      '<div class="field"><div class="row between"><b style="font-size:13px" id="fCount"></b><button type="button" class="btn ghost xs" data-act="pickNone">Bỏ chọn tất cả</button></div><div class="pchips" id="fWho"></div></div>'+
       '<div class="err" id="giveErr" hidden></div></form>',
     foot:'<button class="btn ghost" data-act="close">Huỷ</button><button class="btn accent" data-act="giveSubmit">'+ic('send',16)+'Giao việc</button>'});
   renderWho(); setTimeout(()=>$('#fTitle').focus(),60);
 }
-function fillPickFilters(){
-  const keep=(id,html)=>{const s=$(id),v=s.value;s.innerHTML=html;s.value=v||'';};
-  keep('#fTm','<option value="">Tổ: tất cả</option><option value="LD">Lãnh đạo phường</option>'+TEAMS.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join(''));
-  keep('#fRl','<option value="">Chức vụ: tất cả</option>'+ROLES.map(r=>'<option>'+r+'</option>').join(''));
+let SUG=[], SUGI=0;
+function renderTeams(){
+  const box=$('#fTeams'); if(!box) return;
+  box.innerHTML=TEAMS.map(t=>{const on=has('t',t.id);return '<button type="button" class="tmbtn'+(on?' on':'')+'" data-act="pickTeam" data-id="'+esc(t.id)+'" aria-pressed="'+on+'">'+(on?ic('check',14):'')+esc(t.name)+'</button>';}).join('')||'<span class="muted">Chưa có tổ nào.</span>';
 }
-function pickItems(){
-  const by=$('#fBy').value, tm=$('#fTm').value, rl=$('#fRl').value, q=norm($('#fFind').value.trim());
-  let it;
-  if(by==='t') it=TEAMS.filter(t=>!tm||t.id===tm).map(t=>({v:'t:'+t.id,a:{k:'t',id:t.id},name:t.name,tm:t.name,rl:'Cả tổ',on:has('t',t.id)}));
-  else it=ACTIVE().filter(p=>(!tm||p.team===tm||p.lead===tm)&&(!rl||p.role===rl)).map(p=>({v:'p:'+p.id,a:{k:'p',id:p.id},name:p.name,tm:p.team==='LD'?'Phụ trách '+team(p.lead).name:team(p.team).name,rl:p.role,on:has('p',p.id)}));
-  return it.filter(x=>!q||norm(x.name).includes(q));
+function renderSug(){
+  const box=$('#fSug'), inp=$('#fName'); if(!box||!inp) return;
+  const q=norm(inp.value.trim());
+  SUG=q?ACTIVE().filter(p=>norm(p.name).includes(q)&&!has('p',p.id)).slice(0,8):[];
+  if(SUGI>=SUG.length) SUGI=0;
+  box.hidden=!SUG.length;
+  box.innerHTML=SUG.map((p,i)=>'<button type="button" data-act="pickSug" data-i="'+i+'"'+(i===SUGI?' class="hi"':'')+'>'+avP(p,22)+'<span>'+esc(p.name)+'</span><small>'+esc(pSub(p))+'</small></button>').join('');
 }
-function renderPick(){
-  if(!$('#fList')) return;
-  fillPickFilters(); $('#fRl').disabled=$('#fBy').value==='t';
-  const it=pickItems(), all=it.length>0&&it.every(x=>x.on);
-  $('#fList').innerHTML='<table class="t"><thead><tr><th style="width:40px"><input type="checkbox" id="pkAll" aria-label="Chọn tất cả đang hiện"'+(all?' checked':'')+'></th><th>'+($('#fBy').value==='t'?'Tổ':'Họ tên')+'</th><th>Tổ</th><th>Chức vụ</th></tr></thead><tbody>'+
-    (it.map((x,i)=>'<tr class="pk'+(x.on?' sel':'')+'" data-row="'+x.v+'"><td><input type="checkbox" id="pk-'+i+'" data-pick="'+x.v+'" aria-label="Chọn '+esc(x.name)+'"'+(x.on?' checked':'')+'></td><td><div class="row" style="gap:8px;flex-wrap:nowrap">'+avatar(x.a,24)+'<b style="font-weight:500">'+esc(x.name)+'</b></div></td><td class="muted">'+esc(x.tm)+'</td><td class="muted">'+esc(x.rl)+'</td></tr>').join('')||
-    '<tr><td colspan="4" class="muted">'+(PEOPLE.length||$('#fBy').value==='t'?'Không có ai khớp bộ lọc.':'Chưa có cán bộ nào. Vào trang “Cán bộ” để thêm.')+'</td></tr>')+'</tbody></table>';
+function addName(){
+  const inp=$('#fName'), v=inp.value.trim().replace(/\s+/g,' ');
+  if(!v) return;
+  const exact=ACTIVE().find(p=>norm(p.name)===norm(v));
+  const p=exact||(SUG.length?SUG[SUGI]:null);
+  if(p){ setWho('p:'+p.id,true); }
+  else if(!PICK.some(a=>a.k==='p'&&norm(aName(a))===norm(v))) PICK.push({k:'p',id:v,nm:v});
+  inp.value=''; SUG=[]; SUGI=0; renderWho(); inp.focus();
 }
+function renderPick(){ renderTeams(); renderSug(); }
 function renderWho(){
   renderPick(); if(!$('#fWho')) return;
   $('#fCount').textContent=PICK.length?'Đã chọn '+PICK.length+' đầu mối':'Chưa chọn ai';
@@ -1136,6 +1147,9 @@ document.addEventListener('click',e=>{
   else if(a==='delStage') el.parentElement.remove();
   else if(a==='delWho'){ PICK.splice(+el.dataset.i,1); renderWho(); }
   else if(a==='pickNone'){ PICK=[]; renderWho(); }
+  else if(a==='pickTeam'){ setWho('t:'+id,!has('t',id)); renderWho(); }
+  else if(a==='pickSug'){ SUGI=+el.dataset.i; const p=SUG[SUGI]; if(p){ setWho('p:'+p.id,true); $('#fName').value=''; SUG=[]; renderWho(); $('#fName').focus(); } }
+  else if(a==='addName') addName();
   else if(a==='editMeet'){ if(ADM()) openMeet(id); }
   else if(a==='saveMeet') act('saveMeet',[{id:id||'',d:$('#m_d').value,t:$('#m_t').value,name:$('#m_name').value,place:$('#m_place').value,chair:$('#m_chair').value,who:$('#m_who').value,prep:$('#m_prep').value}],'Đã lưu cuộc họp.',()=>closeModal());
   else if(a==='delMeet'){ const m=MEETS.find(x=>x.id===id); ask('Xóa cuộc họp này?','“'+m.name+'” ngày '+fmtY(m.d)+' sẽ bị xóa khỏi lịch.','Xóa cuộc họp',()=>act('deleteMeet',[id],'Đã xóa cuộc họp.',()=>closeModal())); }
@@ -1169,9 +1183,6 @@ document.addEventListener('change',e=>{
   if(el.id==='fkd'){ F.kd=el.value; renderTaskBody(); }
   if(el.id==='rf'){ RF=el.value; renderReport(); }
   if(el.id==='sTm'){ SF.tm=el.value; renderStaffBody(); }
-  if(el.dataset.pick){ setWho(el.dataset.pick,el.checked); renderWho(); }
-  if(el.id==='pkAll'){ pickItems().forEach(x=>setWho(x.v,el.checked)); renderWho(); }
-  if(['fBy','fTm','fRl'].indexOf(el.id)>=0) renderPick();
   if(el.id==='sfRole') $('#sfTeamLbl').textContent=el.value==='Phó phường'?'Phụ trách tổ':'Thuộc tổ';
   if(el.id==='fKind'){ const st=el.value==='stage'; $('#fKindHint').textContent=KHINT[el.value]; $('#fStagesBox').hidden=!st; if(st&&!$('#fStages').children.length){ addStage('Giai đoạn 1',''); addStage('Giai đoạn 2',''); } }
 });
@@ -1179,11 +1190,13 @@ document.addEventListener('input',e=>{
   if(e.target.id==='fq'){ F.q=e.target.value; renderTaskBody(); }
   if(e.target.id==='rq'){ RQ=e.target.value; const pos=e.target.selectionStart; renderReport(); const n=$('#rq'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(_){} } }
   if(e.target.id==='sQ'){ SF.q=e.target.value; renderStaffBody(); }
-  if(e.target.id==='fFind') renderPick();
+  if(e.target.id==='fName'){ SUGI=0; renderSug(); }
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){ if(!$('#cfo').hidden) closeAsk(); else if(!$('#ov').hidden) closeModal(); return; }
-  if(e.key==='Enter'&&(e.target.id==='fFind'||e.target.closest('#giveForm'))&&e.target.tagName==='INPUT'){ e.preventDefault(); return; }
+  if(e.target.id==='fName'&&SUG.length&&(e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); SUGI=(SUGI+(e.key==='ArrowDown'?1:SUG.length-1))%SUG.length; renderSug(); return; }
+  if(e.key==='Enter'&&e.target.id==='fName'){ e.preventDefault(); addName(); return; }
+  if(e.key==='Enter'&&e.target.closest('#giveForm')&&e.target.tagName==='INPUT'){ e.preventDefault(); return; }
   if(e.key==='Enter'&&e.target.matches('[data-act=open]')&&e.target.tagName!=='BUTTON'){ openTask(e.target.dataset.id); return; }
   if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&e.target.id==='logInput'){ e.preventDefault(); const b=document.querySelector('[data-act=addLog]'); if(b) b.click(); }
 });
