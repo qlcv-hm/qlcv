@@ -1057,26 +1057,40 @@ async function loadAccs(){
 }
 let TG=null;
 function tgCard(){
-  let st, btns;
+  let st, btns, list='';
+  const on=TG&&!TG.err&&TG.on&&TG.hasToken;
   if(!TG) st='<span class="muted">Đang kiểm tra…</span>';
   else if(TG.err) st='<span class="muted">Chưa dùng được: '+esc(TG.err)+'</span>';
-  else if(TG.on&&TG.hasToken) st='<span class="st done">Đang bật</span> Bot <b>@'+esc(TG.bot)+'</b> gửi lúc '+TG.hour+'h00 mỗi sáng tới: '+esc(TG.chats.join(', ')||'(chưa có ai)');
-  else st='<span class="st mute">Chưa bật</span> Mỗi sáng '+((TG&&TG.hour)||7)+'h00 bot Telegram báo lịch họp hôm nay, ngày mai và việc quá hạn, đến hạn.';
-  btns=TG&&TG.on&&TG.hasToken?'<button class="btn xs soft" data-act="tgTest">'+ic('send',13)+'Gửi thử ngay</button><button class="btn xs ghost" data-act="tgOpen">Thêm người nhận / đổi bot</button><button class="btn xs ghost" data-act="tgOff">Tắt</button>'
+  else if(on){
+    st='<span class="st done">Đang bật</span> Bot <b>@'+esc(TG.bot)+'</b> gửi bản tin lúc '+TG.hour+'h00 mỗi sáng. '+(TG.hook?'Người quản trị đã liên kết nhắn cho bot để thêm lịch họp.':'<b>Chưa nhận được lịch qua bot:</b> bấm “Kết nối lại / đổi bot”, để trống ô mã rồi bấm Kết nối.');
+    list=TG.chats.length?'<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">'+TG.chats.map(c=>'<div class="row between" style="font-size:13.5px"><span style="min-width:0">'+esc(c.name)+' <span class="muted">· '+(c.u?'thêm lịch được (tài khoản '+esc(c.u)+')':'chỉ nhận bản tin')+'</span></span><button class="ibtn" data-act="tgDel" data-id="'+esc(c.id)+'" aria-label="Gỡ '+esc(c.name)+'">'+ic('trash',15)+'</button></div>').join('')+'</div>':'<div class="muted" style="margin-top:8px;font-size:13.5px">Chưa có ai nhận tin.</div>';
+  }
+  else st='<span class="st mute">Chưa bật</span> Mỗi sáng '+((TG&&TG.hour)||7)+'h00 bot Telegram báo lịch họp, việc quá hạn, đến hạn. Nhắn cho bot để thêm lịch họp.';
+  btns=on?(TG.hook?'<button class="btn xs accent" data-act="tgLink" data-id="me">Liên kết Telegram của tôi</button><button class="btn xs soft" data-act="tgLink" data-id="r">Thêm người nhận tin</button><button class="btn xs soft" data-act="tgLink" data-id="g">Thêm nhóm</button>':'')+'<button class="btn xs soft" data-act="tgTest">'+ic('send',13)+'Gửi thử ngay</button><button class="btn xs ghost" data-act="tgOpen">Kết nối lại / đổi bot</button><button class="btn xs ghost" data-act="tgOff">Tắt</button>'
     :'<button class="btn sm accent" data-act="tgOpen">'+ic('send',15)+'Cài đặt</button>';
-  return '<div class="card cpad" style="margin-bottom:16px"><div class="tname" style="margin-bottom:6px">Nhắc việc qua Telegram</div><div style="font-size:13.5px;line-height:1.6">'+st+'</div><div class="row" style="margin-top:12px;gap:6px">'+btns+'</div></div>';
+  return '<div class="card cpad" style="margin-bottom:16px"><div class="tname" style="margin-bottom:6px">Bot Telegram: nhắc việc và thêm lịch họp</div><div style="font-size:13.5px;line-height:1.6">'+st+'</div>'+list+'<div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap">'+btns+'</div></div>';
 }
 function openTg(){
   const c=TG&&TG.hasToken;
-  modal({title:'Nhắc việc qua Telegram',sub:'Làm 1 lần, mỗi sáng 7h00 bot tự gửi',size:'md',
+  modal({title:'Kết nối bot Telegram',sub:'Làm 1 lần',size:'md',
     body:'<div class="form"><ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.7">'+
-      (c?'':'<li>Mở Telegram, tìm <b>@BotFather</b>, bấm <b>Bắt đầu</b>, gõ <b>/newbot</b>. Đặt tên bot (ví dụ: QLCV Hoàng Mai), rồi đặt tên đăng nhập kết thúc bằng <b>bot</b> (ví dụ: qlcvhm_nhacviec_bot).</li><li>BotFather gửi lại một mã dạng <b>123456789:ABC…</b>. Chép mã đó dán vào ô bên dưới.</li>')+
-      '<li>Mỗi người muốn nhận tin: tìm bot'+(c?' <b>@'+esc(TG.bot)+'</b>':' vừa tạo')+' trên Telegram, bấm <b>Bắt đầu</b> (Start). Muốn gửi vào nhóm: thêm bot vào nhóm rồi nhắn 1 câu trong nhóm.</li><li>Quay lại đây bấm <b>Kết nối</b>. Bot sẽ gửi ngay bản tin hôm nay để kiểm tra.</li></ol>'+
+      (c?'<li>Giữ bot <b>@'+esc(TG.bot)+'</b>: để trống ô bên dưới. Đổi bot khác: dán mã bot mới (danh sách người nhận sẽ làm lại từ đầu).</li>':'<li>Mở Telegram, tìm <b>@BotFather</b>, bấm <b>Bắt đầu</b>, gõ <b>/newbot</b>. Đặt tên bot, rồi đặt tên đăng nhập kết thúc bằng <b>bot</b>.</li><li>BotFather gửi lại một mã dạng <b>123456789:ABC…</b>. Chép mã đó dán vào ô bên dưới.</li>')+
+      '<li>Bấm <b>Kết nối</b>, rồi bấm <b>Liên kết Telegram của tôi</b> để nhận tin và thêm lịch họp.</li></ol>'+
       '<div class="field"><label for="tgTok">Mã bot (token)</label><input class="inp" id="tgTok" placeholder="'+(c?'Để trống nếu giữ bot cũ':'Dán mã BotFather gửi')+'" autocomplete="off" autocapitalize="off" spellcheck="false"></div>'+
-      '<div class="hint">Mỗi lần có người mới bấm Bắt đầu với bot, quay lại đây bấm Kết nối để thêm họ vào danh sách nhận tin.</div></div>',
+      '<div class="hint">Không gửi mã bot cho người khác. Bot này không dùng chung cho chỗ khác được.</div></div>',
     foot:'<button class="btn ghost" data-act="close">Huỷ</button><button class="btn accent" data-act="tgConnect">'+ic('send',16)+'Kết nối</button>'});
 }
-async function tgCall(fn,args,msg){
+async function openTgLink(kind){
+  if(BUSY) return; BUSY=true; const b=toast('Đang tạo mã…','info',0);
+  try{ const r=await api('tgLinkCode',TOKEN,kind); dropToast(b);
+    const T={me:['Liên kết Telegram của tôi','Để nhận bản tin và thêm lịch họp qua bot'],r:['Thêm người nhận tin','Chỉ nhận bản tin, không thêm được lịch'],g:['Thêm nhóm nhận tin','Nhóm chỉ nhận bản tin 7h sáng']}[kind];
+    modal({title:T[0],sub:T[1],size:'md',body:'<div class="form"><p style="margin:0;font-size:14px;line-height:1.6">'+(kind==='r'?'Gửi riêng link này cho người cần nhận tin. ':'')+'Link dùng <b>1 lần</b>, hết hạn sau <b>10 phút</b>.</p><a class="btn accent" href="'+esc(r.url)+'" target="_blank" rel="noopener">'+ic('send',16)+'Mở Telegram</a>'+
+      '<div class="field"><label for="tgLnk">Hoặc chép link</label><input class="inp" id="tgLnk" readonly value="'+esc(r.url)+'"></div>'+
+      '<div class="field"><label for="tgCmd">Không mở được link: '+(kind==='g'?'thêm bot vào nhóm rồi nhắn trong nhóm':'mở chat với @'+esc(r.bot)+' rồi nhắn')+'</label><input class="inp" id="tgCmd" readonly value="'+esc(kind==='g'?r.cmd.replace('/start','/start@'+r.bot):r.cmd)+'"></div></div>',
+      foot:'<button class="btn accent" data-act="tgLinked">Đã xong</button>'}); }
+  catch(e){ dropToast(b); if(expired(e)) return showLogin('Phiên đăng nhập đã hết, vui lòng đăng nhập lại.'); toast(errMsg(e),'error',9000); }
+  finally{ BUSY=false; }
+}async function tgCall(fn,args,msg){
   if(BUSY) return; BUSY=true; const b=toast('Đang làm…','info',0);
   try{ TG=await api.apply(null,[fn,TOKEN].concat(args)); dropToast(b);
     const bad=TG.sent&&TG.sent.errors.length; toast(bad?'Đã gửi, nhưng lỗi: '+TG.sent.errors.join('; '):msg,bad?'error':'ok',6000);
@@ -1162,9 +1176,12 @@ document.addEventListener('click',e=>{
   else if(a==='saveAcc') accCall('saveAccount',[{u:id||$('#acU').value.trim(),name:$('#acN').value.trim(),role:$('#acR').value,active:$('#acA').checked},!id],id?'Đã lưu tài khoản.':'Đã thêm tài khoản.');
   else if(a==='resetPw') ask('Đặt lại mật khẩu?','Mật khẩu của “'+id+'” sẽ trở về mật khẩu mặc định. Người đó cần đổi lại sau khi đăng nhập.','Đặt lại',()=>accCall('resetPassword',[id],'Đã đặt lại về mật khẩu mặc định.'));
   else if(a==='tgOpen') openTg();
-  else if(a==='tgConnect') tgCall('tgConnect',[$('#tgTok').value.trim(),location.href],'Đã kết nối. Mở Telegram xem bản tin thử.');
+  else if(a==='tgConnect') tgCall('tgConnect',[$('#tgTok').value.trim(),IN_GAS?'':location.href,IN_GAS?'':API_URL],'Đã kết nối bot.');
+  else if(a==='tgLink') openTgLink(id);
+  else if(a==='tgLinked') tgCall('tgStatus',[],'Đã cập nhật danh sách.');
+  else if(a==='tgDel') ask('Gỡ khỏi bot?','Người hoặc nhóm này sẽ không nhận bản tin và không thêm lịch qua bot được nữa.','Gỡ',()=>tgCall('tgRemoveChat',[id],'Đã gỡ.'));
   else if(a==='tgTest') tgCall('tgTest',[],'Đã gửi bản tin vào Telegram.');
-  else if(a==='tgOff') ask('Tắt nhắc qua Telegram?','Bot sẽ không gửi bản tin buổi sáng nữa. Muốn bật lại thì cài đặt lại.','Tắt',()=>tgCall('tgOff',[],'Đã tắt nhắc qua Telegram.'));
+  else if(a==='tgOff') ask('Tắt nhắc qua Telegram?','Bot sẽ không gửi bản tin và không nhận lịch nữa; danh sách người liên kết bị xóa. Muốn bật lại thì cài đặt lại.','Tắt',()=>tgCall('tgOff',[],'Đã tắt nhắc qua Telegram.'));
   else if(a==='pwOpen') openPw();
   else if(a==='pwSave'){
     const n1=$('#pwNew').value, n2=$('#pwNew2').value, err=m=>{ $('#pwErr').textContent=m; $('#pwErr').hidden=false; };
@@ -1199,6 +1216,15 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.closest('#giveForm')&&e.target.tagName==='INPUT'){ e.preventDefault(); return; }
   if(e.key==='Enter'&&e.target.matches('[data-act=open]')&&e.target.tagName!=='BUTTON'){ openTask(e.target.dataset.id); return; }
   if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&e.target.id==='logInput'){ e.preventDefault(); const b=document.querySelector('[data-act=addLog]'); if(b) b.click(); }
+});
+
+/* ================= Tự tải lại khi quay lại trang (thấy lịch vừa thêm qua bot) ================= */
+let LASTGET=Date.now();
+document.addEventListener('visibilitychange',async()=>{
+  const free=()=>!document.hidden&&!BUSY&&!$('#app').hidden&&$('#ov').hidden&&$('#cfo').hidden&&TAB!=='acc'&&!/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement||{}).tagName||'');
+  if(!TOKEN||Date.now()-LASTGET<30000||!free()) return; LASTGET=Date.now();
+  const tk=TOKEN;
+  try{ const d=await api('getData',tk); if(tk===TOKEN&&free()){ setData(d); applyUser(); renderNav(); renderPage(); } }catch(e){ if(expired(e)&&free()) showLogin('Phiên đăng nhập đã hết, vui lòng đăng nhập lại.'); }
 });
 
 /* ================= Khởi động ================= */
